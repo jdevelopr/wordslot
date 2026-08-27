@@ -120,7 +120,7 @@ function randLetter(){
 
 // ---------- Upgrades (permanent stat cards) ----------
 const UPG=[
- {id:'reel',name:'Extra reel',desc:'One more letter per spin',cost:7,max:3},
+ {id:'reel',name:'Extra reel',desc:'One more letter per spin',cost:7,max:5},
  {id:'lock',name:'Reel lock',desc:'Hold a reel between spins',cost:5,max:3},
  {id:'spin',name:'Extra spin',desc:'+1 spin every blind',cost:5,max:4},
  {id:'vowel',name:'Vowel tune',desc:'Vowels show up more',cost:4,max:3},
@@ -156,15 +156,18 @@ const JOKERS=[
  {id:'even',name:'Even Steven',desc:'Even-length word: +4 mult',cost:4,rar:'c'},
  {id:'twins',name:'Twins',desc:'Word has a doubled letter like LL or EE: +5 mult',cost:5,rar:'c'},
  {id:'early',name:'Early bird',desc:'First spin of a blind: x2 mult',cost:6,rar:'u'},
- {id:'miser',name:'Miser',desc:'+1 mult for every $5 you have (max +5)',cost:6,rar:'u'},
+ {id:'miser',name:'Miser',desc:'+1 mult for every $5 you have',cost:6,rar:'u'},
  {id:'collect',name:'Collector',desc:'+1 mult for every joker you own',cost:6,rar:'u'},
- {id:'streak',name:'Hot streak',desc:'+1 mult for each spin in a row that scored a word',cost:6,rar:'u'},
+ {id:'streak',name:'Hot streak',desc:'+1 mult for each spin in a row that scored a word. Carries across blinds',cost:6,rar:'u'},
  {id:'dry',name:'Dry spell',desc:'Word with no vowels: x3 mult',cost:5,rar:'u'},
  {id:'palin',name:'Palindrome',desc:'Word reads the same backwards: x3 mult',cost:7,rar:'r'},
  {id:'full',name:'Full house',desc:'Word uses every reel: x5 mult',cost:8,rar:'r'},
  {id:'boss',name:'Boss buster',desc:'During a boss blind: x2 mult',cost:8,rar:'r'},
+ {id:'estate',name:'Real estate',desc:'+1 reel for every $10 you have when a blind starts',cost:8,rar:'r'},
 ];
 const JOKER_SLOTS=5;
+function jokerSlots(){ return JOKER_SLOTS; }
+function jokerW(){ const n=jokerSlots(); return Math.min(80,Math.floor((W-16)/n)-4); }
 const RARITY_COL={c:P.blue,u:P.mint,r:P.pink,l:P.brass};
 const RARITY_NAME={c:'COMMON',u:'UNCOMMON',r:'RARE',l:'LEGENDARY'};
 const RARITY_WT={c:5,u:3,r:1.5,l:0.5};
@@ -195,7 +198,7 @@ const G={};
 function newGame(){
   Object.assign(G,{ state:'select', ante:1, blind:0, money:4, score:0, dispScore:0, spinsLeft:4,
     up:{reel:0,lock:1,spin:0,vowel:0,dice:0,wild:0,mult:0,long:0,coin:0,vowelval:0,commonval:0,rareval:0,wildval:0},
-    jokers:[], seen:{}, reels:[], locked:[], result:null, shop:[], rerollCost:3, freeRerolls:0, coupon:0, jokerShop:0, doublePay:0, bonusSpins:0,
+    jokers:[], seen:{}, streak:0, reels:[], locked:[], result:null, shop:[], rerollCost:3, freeRerolls:0, coupon:0, jokerShop:0, doublePay:0, bonusSpins:0,
     msg:'', msgT:0, best:0, bestWord:'', bossesBeaten:0, blindsDone:[], hover:[0,0,0,0], selT:0 });
   buildReels(); newAnte();
 }
@@ -206,7 +209,7 @@ function anteBase(a){ return Math.round(70*Math.pow(2.05,a-1)/5)*5; }
 function blindTarget(ante,blind,b){ const m=[1,1.5,2][blind]; let t=anteBase(ante)*m; if(blind===2&&(b||G.boss).id==='greedy') t*=1.25; return Math.round(t/5)*5; }
 function target(){ return blindTarget(G.ante,G.blind); }
 const BLIND_NAMES=['Small blind','Big blind','Boss reel'], BLIND_PAY=[3,4,5];
-function reelCount(){ return 5+G.up.reel; }
+function reelCount(){ return 5+G.up.reel+(hasJoker('estate')?Math.floor(G.money/10):0); }
 function spinsPerBlind(){ return 4+G.up.spin+(bossIs('debt')?-1:0); }
 function buildReels(){
   const n=reelCount(); while(G.reels.length<n) G.reels.push({letter:randLetter(),off:0,spinning:false,strip:[],stopAt:0,bounce:0,lit:0});
@@ -243,7 +246,7 @@ function scoreWord(w,raw,ctxInfo){
   if(hasJoker('lucky')&&G.reels.length>=7){ mult+=2; trig.push({j:'Lucky seven',t:'+2 MULT'}); }
   if(hasJoker('even')&&w.length%2===0){ mult+=4; trig.push({j:'Even Steven',t:'+4 MULT'}); }
   if(hasJoker('twins')&&/([A-Z])\1/.test(w)){ mult+=5; trig.push({j:'Twins',t:'+5 MULT'}); }
-  if(hasJoker('miser')){ const n=Math.min(5,Math.floor(G.money/5)); if(n){ mult+=n; trig.push({j:'Miser',t:'+'+n+' MULT'}); } }
+  if(hasJoker('miser')){ const n=Math.floor(G.money/5); if(n){ mult+=n; trig.push({j:'Miser',t:'+'+n+' MULT'}); } }
   if(hasJoker('collect')){ const n=G.jokers.length; mult+=n; trig.push({j:'Collector',t:'+'+n+' MULT'}); }
   if(hasJoker('streak')&&G.streak){ mult+=G.streak; trig.push({j:'Hot streak',t:'+'+G.streak+' MULT'}); }
   if(w.length>=5&&G.up.long) mult*=Math.pow(1.5,G.up.long);
@@ -280,7 +283,7 @@ function doShake(a){ shake=Math.max(shake,a); }
 
 // ---------- Blind flow ----------
 function startBlind(){
-  G.score=0; G.dispScore=0; G.spinsLeft=spinsPerBlind()+G.bonusSpins; G.bonusSpins=0; G.spinNum=0; G.streak=0; buildReels();
+  G.score=0; G.dispScore=0; G.spinsLeft=spinsPerBlind()+G.bonusSpins; G.bonusSpins=0; G.spinNum=0; buildReels();
   G.reels.forEach(r=>{ r.letter=randLetter(); r.lit=0; r.jammed=false; });
   if(bossIs('jam')){ const i=Math.floor(Math.random()*G.reels.length); G.reels[i].jammed=true; }
   G.state='play'; G.result=null; doShake(3); beep(300,0.15,'square',0.08,200);
@@ -363,7 +366,7 @@ function update(dt){
     const trig=R.words.flatMap(w=>w.trig); const per=0.45; const trigTime=trig.length*0.5;
     // phases: 0 word, 1 chips, 2 joker triggers, 3 mult, 4 count
     let ph; if(R.t<per) ph=0; else if(R.t<per*2) ph=1; else if(R.t<per*2+trigTime) ph=2; else if(R.t<per*3+trigTime) ph=3; else ph=4;
-    if(ph===2){ const due=Math.min(trig.length,Math.floor((R.t-per*2)/0.5)+1); while(R.trigShown<due){ const t=trig[R.trigShown]; R.trigShown++; const slot=G.jokers.findIndex(j=>j.name===t.j); const x=slot>=0?jokerX(slot)+40:W/2; floatText(t.t,x,56,t.t.includes('X0.5')||t.t.includes('BANNED')?P.red:P.pink,1); burst(x,68,12,[P.pink,P.brass],2,0.5,1); beep(t.t.includes('X0.5')?200:800+R.trigShown*100,0.1,'square',0.08); doShake(2); } }
+    if(ph===2){ const due=Math.min(trig.length,Math.floor((R.t-per*2)/0.5)+1); while(R.trigShown<due){ const t=trig[R.trigShown]; R.trigShown++; const slot=G.jokers.findIndex(j=>j.name===t.j); const x=slot>=0?jokerX(slot)+jokerW()/2:W/2; floatText(t.t,x,56,t.t.includes('X0.5')||t.t.includes('BANNED')?P.red:P.pink,1); burst(x,68,12,[P.pink,P.brass],2,0.5,1); beep(t.t.includes('X0.5')?200:800+R.trigShown*100,0.1,'square',0.08); doShake(2); } }
     if(ph>R.phase){ R.phase=ph;
       if(ph===1){ beep(500,0.08,'square',0.06); R.words.forEach(w=>{ w.vals.forEach((v,k)=>setTimeout(()=>{ floatText('+'+v,reelX(w.i+k)+13,108,v>=15?P.pink:P.blue,1); sfxCount(); },k*60)); }); }
       if(ph===3) beep(700,0.08,'square',0.06);
@@ -383,7 +386,7 @@ function update(dt){
 
 // ---------- Draw helpers ----------
 function reelX(i){ const n=G.reels.length, w=n*30-4; return Math.floor(W/2-w/2)+i*30; }
-function jokerX(i){ return Math.floor(W/2-(JOKER_SLOTS*84-4)/2)+i*84; }
+function jokerX(i){ const n=jokerSlots(), cw=jokerW(); return Math.floor(W/2-(n*(cw+4)-4)/2)+i*(cw+4); }
 function rect(x,y,w,h,c){ ctx.fillStyle=c; ctx.fillRect(x,y,w,h); }
 function panel(x,y,w,h,fill=P.plum,edge=P.brass){ rect(x,y,w,h,edge); rect(x+2,y+2,w-4,h-4,fill); rect(x+2,y+2,w-4,1,P.plumL); }
 const buttons=[];
@@ -418,12 +421,14 @@ function drawHUD(){
   if(G.up.lock){ const a=locksAvail(); text(ctx,bossIs('nolock')?'LOCKS OFF':'LOCKS '+a+'/'+G.up.lock,W-12,42,a>0?P.blue:P.grey,1,'right'); }
 }
 function drawJokerRow(y,interactive){
-  for(let i=0;i<JOKER_SLOTS;i++){ const x=jokerX(i), j=G.jokers[i];
-    if(!j){ for(let k=0;k<80;k+=4){ rect(x+k,y,2,1,P.plumL); rect(x+k,y+23,2,1,P.plumL); } for(let k=0;k<24;k+=4){ rect(x,y+k,1,2,P.plumL); rect(x+79,y+k,1,2,P.plumL); } continue; }
-    const hov=mouse.x>=x&&mouse.x<x+80&&mouse.y>=y&&mouse.y<y+24;
-    rect(x,y+1,80,24,P.ink); rect(x,y,80,24,hov&&interactive?P.cream:RARITY_COL[j.rar]); rect(x+2,y+2,76,20,'#fff3d6');
-    wrapText(j.name,x+2,y+8,76,P.ink,'center');
-    if(hov){ G.tip={text:RARITY_NAME[j.rar]+' - '+j.desc,x:x+40,y:y+26}; if(interactive){ rect(x+2,y+2,76,20,'#fff3d6'); text(ctx,'SELL $'+Math.ceil(j.cost/2),x+40,y+8,P.pink,1,'center'); buttons.push({id:'sell'+i,x,y,w:80,h:24,enabled:true}); } }
+  const n=jokerSlots(), cw=jokerW();
+  for(let i=0;i<n;i++){ const x=jokerX(i), j=G.jokers[i];
+    if(!j){ for(let k=0;k<cw;k+=4){ rect(x+k,y,2,1,P.plumL); rect(x+k,y+23,2,1,P.plumL); } for(let k=0;k<24;k+=4){ rect(x,y+k,1,2,P.plumL); rect(x+cw-1,y+k,1,2,P.plumL); } continue; }
+    const hov=mouse.x>=x&&mouse.x<x+cw&&mouse.y>=y&&mouse.y<y+24;
+    rect(x,y+1,cw,24,P.ink); rect(x,y,cw,24,hov&&interactive?P.cream:RARITY_COL[j.rar]); rect(x+2,y+2,cw-4,20,'#fff3d6');
+    // narrow cards (many slots): fall back to a one-line truncated name; the tooltip still shows the full name
+    if(cw>=64) wrapText(j.name,x+2,y+8,cw-4,P.ink,'center'); else { const maxC=Math.floor((cw-4)/6); let nm=j.name.toUpperCase(); if(nm.length>maxC) nm=nm.slice(0,maxC-1)+'.'; text(ctx,nm,x+cw/2,y+8,P.ink,1,'center'); }
+    if(hov){ G.tip={text:j.name.toUpperCase()+' ('+RARITY_NAME[j.rar]+') - '+j.desc,x:x+cw/2,y:y+26}; if(interactive){ rect(x+2,y+2,cw-4,20,'#fff3d6'); text(ctx,cw>=64?'SELL $'+Math.ceil(j.cost/2):'$'+Math.ceil(j.cost/2),x+cw/2,y+8,P.pink,1,'center'); buttons.push({id:'sell'+i,x,y,w:cw,h:24,enabled:true}); } }
   }
 }
 function drawTip(){ if(!G.tip) return; const t=G.tip; const w=Math.min(200,textW(t.text)+8); const x=Math.max(4,Math.min(W-w-4,t.x-w/2)); const lines=Math.ceil(textW(t.text)/(w-8)); rect(x,t.y,w,lines*9+5,P.ink); rect(x+1,t.y+1,w-2,lines*9+3,P.plumD); wrapText(t.text,x+4,t.y+3,w-8,P.cream); G.tip=null; }
@@ -518,7 +523,7 @@ function drawShop(){
     const slide=Math.max(0,1-Math.min(1,(G.shopT-i*0.1)*4))*40;
     const hov=mouse.x>=x&&mouse.x<x+w&&mouse.y>=y0-8&&mouse.y<y0+h;
     G.hover[i]+=((hov?1:0)-G.hover[i])*0.25; const rise=Math.round(G.hover[i]*8);
-    const y=y0+slide-rise; const price=shopPrice(u); const isJ=u.kind==='joker'; const full=isJ&&G.jokers.length>=JOKER_SLOTS; const can=G.money>=price&&!full;
+    const y=y0+slide-rise; const price=shopPrice(u); const isJ=u.kind==='joker'; const full=isJ&&G.jokers.length>=jokerSlots(); const can=G.money>=price&&!full;
     rect(x+3,y+4+rise,w,h,'rgba(0,0,0,0.45)');
     rect(x,y,w,h,can?(hov?P.cream:(isJ?RARITY_COL[u.rar]:P.brass)):P.grey); rect(x+2,y+2,w-4,h-4,'#fff3d6'); cardCorners(x,y,w,h);
     rect(x+2,y+2,w-4,isJ?20:16,can?(isJ?'#5a1a2a':P.plum):P.plumL); rect(x+2,y+(isJ?22:18),w-4,1,P.brassD);
@@ -533,7 +538,7 @@ function drawShop(){
   const rc=G.freeRerolls?0:G.rerollCost;
   button('reroll',30,222,110,20,G.freeRerolls?'REROLL FREE':'REROLL $'+rc,P.blue,P.ink,G.money>=rc);
   button('next',W-150,222,120,20,G.blind>2?'NEXT ANTE >':'NEXT BLIND >',P.pink,P.ink,true);
-  text(ctx,'HOVER A JOKER TO SELL IT.  SPINS '+(4+G.up.spin)+'  REELS '+reelCount()+'  JOKERS '+G.jokers.length+'/'+JOKER_SLOTS,W/2,252,P.grey,1,'center');
+  text(ctx,'HOVER A JOKER TO SELL IT.  SPINS '+(4+G.up.spin)+'  REELS '+reelCount()+'  JOKERS '+G.jokers.length+'/'+jokerSlots(),W/2,252,P.grey,1,'center');
 }
 function drawTitle(){
   drawBg(); const bob=Math.sin(tGlobal*3)*2;
@@ -577,7 +582,7 @@ function act(id){
   if(id.startsWith('lock')){ const i=+id.slice(4); G.locked[i]=true; beep(800,0.06,'square',0.06); burst(reelX(i)+13,132,8,P.blue,1.5,0.4,1); return; }
   if(id.startsWith('sell')){ const i=+id.slice(4); const j=G.jokers[i]; if(!j) return; G.money+=Math.ceil(j.cost/2); G.jokers.splice(i,1); beep(500,0.1,'square',0.08,-200); floatText('+$'+Math.ceil(j.cost/2),W-40,14,P.brass,1); return; }
   if(id.startsWith('buy')){ const k=+id.slice(3); const u=G.shop[k]; if(!u) return; const price=shopPrice(u); if(G.money<price) return sfxNo();
-    if(u.kind==='joker'){ if(G.jokers.length>=JOKER_SLOTS) return sfxNo(); G.jokers.push(JOKERS.find(j=>j.id===u.id)); } else G.up[u.id]++;
+    if(u.kind==='joker'){ if(G.jokers.length>=jokerSlots()) return sfxNo(); G.jokers.push(JOKERS.find(j=>j.id===u.id)); } else G.up[u.id]++;
     G.money-=price; G.shop.splice(k,1); sfxBuy(); burst(W/2,100,30,[P.brass,P.mint],3,0.8,2); doShake(3); floatText('-$'+price,W-30,14,P.pink); return; }
   if(id==='reroll'){ if(G.freeRerolls) G.freeRerolls--; else { if(G.money<G.rerollCost) return sfxNo(); G.money-=G.rerollCost; G.rerollCost+=1; } rollShop(); G.shopT=0; beep(600,0.08,'square',0.06,200); return; }
   if(id==='toshop'){ afterBlindWin(); beep(700,0.1,'square',0.08); return; }
