@@ -114,7 +114,6 @@ const UPG=[
  {id:'dice',name:'Loaded dice',desc:'Common letters, fewer Q Z X J',cost:4,max:3},
  {id:'wild',name:'Wild star',desc:'Stars can be any letter',cost:8,max:3},
  {id:'mult',name:'Mult crown',desc:'+1 mult on every word',cost:6,max:5},
- {id:'combo',name:'Combo',desc:'Score every word, not just the best',cost:9,max:1},
  {id:'long',name:'Long shot',desc:'5+ letter words: mult x1.5',cost:6,max:3},
  {id:'coin',name:'Loose change',desc:'+$2 after each blind',cost:3,max:3},
  {id:'vowelval',name:'Gold vowels',desc:'A E I O U worth +2 each',cost:5,max:3},
@@ -125,23 +124,37 @@ const UPG=[
 
 // ---------- Jokers (conditional, max 5 slots) ----------
 const JOKERS=[
- {id:'allit',name:'Alliterator',desc:'Word starts and ends with the same letter: x2 mult',cost:6},
- {id:'hoard',name:'Hoarder',desc:'+1 mult for each reel you held this spin',cost:5},
- {id:'scrab',name:'Scrabbler',desc:'7+ letter word: x4 mult',cost:7},
- {id:'gamble',name:'Gambler',desc:'Coin flip: x3 mult or x0.5 mult',cost:5},
- {id:'vmove',name:'Vowel movement',desc:'+10 chips per vowel in the word',cost:5},
- {id:'plural',name:'Pluralist',desc:'Word ends in S: +3 mult',cost:5},
- {id:'worm',name:'Bookworm',desc:'5+ letter word: +40 chips',cost:5},
- {id:'echo',name:'Echo',desc:'A word you already scored this run: x2 mult',cost:6},
- {id:'tiny',name:'Tiny tiger',desc:'3-letter words: x3 mult',cost:5},
- {id:'bank',name:'Banker',desc:'Earn $1 every time a word scores',cost:6},
- {id:'wildlove',name:'Star struck',desc:'Wild in the word: +5 mult',cost:6},
- {id:'zed',name:'Zed head',desc:'Each J Q X Z in the word: +30 chips',cost:6},
- {id:'lucky',name:'Lucky seven',desc:'Word scored on a spin with 7 or more reels: +2 mult',cost:4},
- {id:'last',name:'Last call',desc:'On your final spin of a blind: x2 mult',cost:7},
+ // rar: c=common u=uncommon r=rare l=legendary
+ {id:'allit',name:'Alliterator',desc:'Word starts and ends with the same letter: x2 mult',cost:6,rar:'u'},
+ {id:'hoard',name:'Hoarder',desc:'+1 mult for each reel you held this spin',cost:5,rar:'c'},
+ {id:'scrab',name:'Scrabbler',desc:'7+ letter word: x4 mult',cost:7,rar:'r'},
+ {id:'gamble',name:'Gambler',desc:'Coin flip: x3 mult or x0.5 mult',cost:5,rar:'u'},
+ {id:'vmove',name:'Vowel movement',desc:'+10 chips per vowel in the word',cost:5,rar:'c'},
+ {id:'plural',name:'Pluralist',desc:'Word ends in S: +3 mult',cost:5,rar:'c'},
+ {id:'worm',name:'Bookworm',desc:'5+ letter word: +40 chips',cost:5,rar:'c'},
+ {id:'echo',name:'Echo',desc:'A word you already scored this run: x2 mult',cost:6,rar:'u'},
+ {id:'tiny',name:'Tiny tiger',desc:'3-letter words: x3 mult',cost:5,rar:'u'},
+ {id:'bank',name:'Banker',desc:'Earn $1 every time a word scores',cost:6,rar:'u'},
+ {id:'wildlove',name:'Star struck',desc:'Wild in the word: +5 mult',cost:6,rar:'u'},
+ {id:'zed',name:'Zed head',desc:'Each J Q X Z in the word: +30 chips',cost:6,rar:'c'},
+ {id:'lucky',name:'Lucky seven',desc:'Word scored on a spin with 7 or more reels: +2 mult',cost:4,rar:'c'},
+ {id:'last',name:'Last call',desc:'On your final spin of a blind: x2 mult',cost:7,rar:'r'},
+ {id:'combo',name:'Combo',desc:'Score every word on the reels, not just the best one',cost:12,rar:'l'},
+ {id:'even',name:'Even Steven',desc:'Even-length word: +4 mult',cost:4,rar:'c'},
+ {id:'twins',name:'Twins',desc:'Word has a doubled letter like LL or EE: +5 mult',cost:5,rar:'c'},
+ {id:'early',name:'Early bird',desc:'First spin of a blind: x2 mult',cost:6,rar:'u'},
+ {id:'miser',name:'Miser',desc:'+1 mult for every $5 you have (max +5)',cost:6,rar:'u'},
+ {id:'collect',name:'Collector',desc:'+1 mult for every joker you own',cost:6,rar:'u'},
+ {id:'streak',name:'Hot streak',desc:'+1 mult for each spin in a row that scored a word',cost:6,rar:'u'},
+ {id:'dry',name:'Dry spell',desc:'Word with no vowels: x3 mult',cost:5,rar:'u'},
+ {id:'palin',name:'Palindrome',desc:'Word reads the same backwards: x3 mult',cost:7,rar:'r'},
+ {id:'full',name:'Full house',desc:'Word uses every reel: x5 mult',cost:8,rar:'r'},
+ {id:'boss',name:'Boss buster',desc:'During a boss blind: x2 mult',cost:8,rar:'r'},
 ];
 const JOKER_SLOTS=5;
-const RARITY_COL={c:P.blue};
+const RARITY_COL={c:P.blue,u:P.mint,r:P.pink,l:P.brass};
+const RARITY_NAME={c:'COMMON',u:'UNCOMMON',r:'RARE',l:'LEGENDARY'};
+const RARITY_WT={c:5,u:3,r:1.5,l:0.5};
 
 // ---------- Bosses ----------
 const BOSSES=[
@@ -168,7 +181,7 @@ const TAGS=[
 const G={};
 function newGame(){
   Object.assign(G,{ state:'select', ante:1, blind:0, money:4, score:0, dispScore:0, spinsLeft:4,
-    up:{reel:0,lock:1,spin:0,vowel:0,dice:0,wild:0,mult:0,combo:0,long:0,coin:0,vowelval:0,commonval:0,rareval:0,wildval:0},
+    up:{reel:0,lock:1,spin:0,vowel:0,dice:0,wild:0,mult:0,long:0,coin:0,vowelval:0,commonval:0,rareval:0,wildval:0},
     jokers:[], seen:{}, reels:[], locked:[], result:null, shop:[], rerollCost:3, freeRerolls:0, coupon:0, jokerShop:0, doublePay:0, bonusSpins:0,
     msg:'', msgT:0, best:0, bestWord:'', bossesBeaten:0, blindsDone:[], hover:[0,0,0,0], selT:0 });
   buildReels(); newAnte();
@@ -205,7 +218,7 @@ function letterVal(c,idx,len){
   return v;
 }
 function scoreWord(w,raw,ctxInfo){
-  const trig=[]; const held=ctxInfo?ctxInfo.held:0, lastSpin=ctxInfo?ctxInfo.lastSpin:false;
+  const trig=[]; const held=ctxInfo?ctxInfo.held:0, lastSpin=ctxInfo?ctxInfo.lastSpin:false, firstSpin=ctxInfo?ctxInfo.firstSpin:false;
   let chips=0; const vals=[]; for(let i=0;i<raw.length;i++){ const v=letterVal(raw[i],i,raw.length)*3; vals.push(v); chips+=v; } chips+=w.length*w.length*2;
   if(hasJoker('vmove')){ const n=[...w].filter(c=>VOWELS.includes(c)).length; if(n){ chips+=10*n; trig.push({j:'Vowel movement',t:'+'+(10*n)+' CHIPS'}); } }
   if(hasJoker('worm')&&w.length>=5){ chips+=40; trig.push({j:'Bookworm',t:'+40 CHIPS'}); }
@@ -215,12 +228,22 @@ function scoreWord(w,raw,ctxInfo){
   if(hasJoker('plural')&&w.endsWith('S')){ mult+=3; trig.push({j:'Pluralist',t:'+3 MULT'}); }
   if(hasJoker('wildlove')&&raw.includes('*')){ mult+=5; trig.push({j:'Star struck',t:'+5 MULT'}); }
   if(hasJoker('lucky')&&G.reels.length>=7){ mult+=2; trig.push({j:'Lucky seven',t:'+2 MULT'}); }
+  if(hasJoker('even')&&w.length%2===0){ mult+=4; trig.push({j:'Even Steven',t:'+4 MULT'}); }
+  if(hasJoker('twins')&&/([A-Z])\1/.test(w)){ mult+=5; trig.push({j:'Twins',t:'+5 MULT'}); }
+  if(hasJoker('miser')){ const n=Math.min(5,Math.floor(G.money/5)); if(n){ mult+=n; trig.push({j:'Miser',t:'+'+n+' MULT'}); } }
+  if(hasJoker('collect')){ const n=G.jokers.length; mult+=n; trig.push({j:'Collector',t:'+'+n+' MULT'}); }
+  if(hasJoker('streak')&&G.streak){ mult+=G.streak; trig.push({j:'Hot streak',t:'+'+G.streak+' MULT'}); }
   if(w.length>=5&&G.up.long) mult*=Math.pow(1.5,G.up.long);
   if(hasJoker('allit')&&w[0]===w[w.length-1]){ mult*=2; trig.push({j:'Alliterator',t:'X2 MULT'}); }
   if(hasJoker('tiny')&&w.length===3){ mult*=3; trig.push({j:'Tiny tiger',t:'X3 MULT'}); }
   if(hasJoker('scrab')&&w.length>=7){ mult*=4; trig.push({j:'Scrabbler',t:'X4 MULT'}); }
   if(hasJoker('echo')&&G.seen[w]){ mult*=2; trig.push({j:'Echo',t:'X2 MULT'}); }
   if(hasJoker('last')&&lastSpin){ mult*=2; trig.push({j:'Last call',t:'X2 MULT'}); }
+  if(hasJoker('early')&&firstSpin){ mult*=2; trig.push({j:'Early bird',t:'X2 MULT'}); }
+  if(hasJoker('boss')&&G.blind===2){ mult*=2; trig.push({j:'Boss buster',t:'X2 MULT'}); }
+  if(hasJoker('dry')&&![...w].some(c=>VOWELS.includes(c))){ mult*=3; trig.push({j:'Dry spell',t:'X3 MULT'}); }
+  if(hasJoker('palin')&&w.length>=3&&w===[...w].reverse().join('')){ mult*=3; trig.push({j:'Palindrome',t:'X3 MULT'}); }
+  if(hasJoker('full')&&raw.length===G.reels.length){ mult*=5; trig.push({j:'Full house',t:'X5 MULT'}); }
   if(hasJoker('gamble')){ const win=Math.random()<0.5; mult*=win?3:0.5; trig.push({j:'Gambler',t:win?'X3 MULT!':'X0.5 MULT...'}); }
   mult=Math.round(mult*10)/10;
   let total=Math.round(chips*mult);
@@ -244,7 +267,7 @@ function doShake(a){ shake=Math.max(shake,a); }
 
 // ---------- Blind flow ----------
 function startBlind(){
-  G.score=0; G.dispScore=0; G.spinsLeft=spinsPerBlind()+G.bonusSpins; G.bonusSpins=0; buildReels();
+  G.score=0; G.dispScore=0; G.spinsLeft=spinsPerBlind()+G.bonusSpins; G.bonusSpins=0; G.spinNum=0; G.streak=0; buildReels();
   G.reels.forEach(r=>{ r.letter=randLetter(); r.lit=0; r.jammed=false; });
   if(bossIs('jam')){ const i=Math.floor(Math.random()*G.reels.length); G.reels[i].jammed=true; }
   G.state='play'; G.result=null; doShake(3); beep(300,0.15,'square',0.08,200);
@@ -256,14 +279,14 @@ function skipBlind(){
 }
 function startSpin(){
   if(G.state!=='play'||G.spinsLeft<=0) return;
-  G.spinsLeft--; G.result=null; G.state='spinning'; G.spinT=0; G.heldThisSpin=G.locked.filter(x=>x).length;
+  G.spinsLeft--; G.spinNum=(G.spinNum||0)+1; G.result=null; G.state='spinning'; G.spinT=0; G.heldThisSpin=G.locked.filter(x=>x).length;
   G.reels.forEach((r,i)=>{ r.lit=0; if(G.locked[i]||r.jammed) return; r.spinning=true; r.off=0; r.strip=Array.from({length:6},randLetter); r.stopAt=0.7+i*0.28+Math.random()*0.1; });
   beep(200,0.15,'sawtooth',0.06,300); doShake(1.5);
 }
 function finishSpin(){
   const letters=G.reels.map(r=>r.letter);
-  const words=findWords(letters,{held:G.heldThisSpin,lastSpin:G.spinsLeft===0});
-  const scored=G.up.combo?words:words.slice(0,1);
+  const words=findWords(letters,{held:G.heldThisSpin,lastSpin:G.spinsLeft===0,firstSpin:G.spinNum===1});
+  const scored=hasJoker('combo')?words:words.slice(0,1);
   let gained=scored.reduce((a,w)=>a+w.total,0);
   G.result={words:scored,gained,t:0,phase:0,counted:0,trigShown:0};
   G.state='result';
@@ -274,7 +297,8 @@ function finishSpin(){
     else doShake(2);
     if(gained>G.best){ G.best=gained; G.bestWord=scored[0].word; }
     if(hasJoker('bank')){ G.money+=scored.length; floatText('+$'+scored.length,W-40,14,P.brass,1); }
-  } else { sfxNo(); G.msg='NO WORD'; G.msgT=1; }
+    G.streak=(G.streak||0)+1;
+  } else { sfxNo(); G.msg='NO WORD'; G.msgT=1; G.streak=0; }
   G.locked=G.locked.map(()=>false);
 }
 function endResult(){
@@ -295,7 +319,7 @@ function rollShop(){ G.hover=[0,0,0,0];
   const upool=UPG.filter(u=>G.up[u.id]<u.max), jpool=JOKERS.filter(j=>!hasJoker(j.id));
   const nJ=G.jokerShop?4:2, nU=4-nJ; G.shop=[];
   for(let k=0;k<nU&&upool.length;k++){ const i=Math.floor(Math.random()*upool.length); G.shop.push({kind:'up',...upool.splice(i,1)[0]}); }
-  for(let k=0;k<nJ&&jpool.length;k++){ const i=Math.floor(Math.random()*jpool.length); G.shop.push({kind:'joker',...jpool.splice(i,1)[0]}); }
+  for(let k=0;k<nJ&&jpool.length;k++){ const tot=jpool.reduce((a,j)=>a+RARITY_WT[j.rar],0); let r=Math.random()*tot, i=0; for(;i<jpool.length-1;i++){ r-=RARITY_WT[jpool[i].rar]; if(r<=0) break; } G.shop.push({kind:'joker',...jpool.splice(i,1)[0]}); }
 }
 function shopPrice(c){ return Math.max(1,c.cost-(G.coupon?2:0)); }
 function leaveShop(){ G.coupon=0; G.jokerShop=0; G.freeRerolls=0;
@@ -384,9 +408,9 @@ function drawJokerRow(y,interactive){
   for(let i=0;i<JOKER_SLOTS;i++){ const x=jokerX(i), j=G.jokers[i];
     if(!j){ for(let k=0;k<80;k+=4){ rect(x+k,y,2,1,P.plumL); rect(x+k,y+23,2,1,P.plumL); } for(let k=0;k<24;k+=4){ rect(x,y+k,1,2,P.plumL); rect(x+79,y+k,1,2,P.plumL); } continue; }
     const hov=mouse.x>=x&&mouse.x<x+80&&mouse.y>=y&&mouse.y<y+24;
-    rect(x,y+1,80,24,P.ink); rect(x,y,80,24,hov&&interactive?P.cream:P.pink); rect(x+2,y+2,76,20,'#fff3d6');
+    rect(x,y+1,80,24,P.ink); rect(x,y,80,24,hov&&interactive?P.cream:RARITY_COL[j.rar]); rect(x+2,y+2,76,20,'#fff3d6');
     wrapText(j.name,x+2,y+8,76,P.ink,'center');
-    if(hov){ G.tip={text:j.desc,x:x+40,y:y+26}; if(interactive){ rect(x+2,y+2,76,20,'#fff3d6'); text(ctx,'SELL $'+Math.ceil(j.cost/2),x+40,y+8,P.pink,1,'center'); buttons.push({id:'sell'+i,x,y,w:80,h:24,enabled:true}); } }
+    if(hov){ G.tip={text:RARITY_NAME[j.rar]+' - '+j.desc,x:x+40,y:y+26}; if(interactive){ rect(x+2,y+2,76,20,'#fff3d6'); text(ctx,'SELL $'+Math.ceil(j.cost/2),x+40,y+8,P.pink,1,'center'); buttons.push({id:'sell'+i,x,y,w:80,h:24,enabled:true}); } }
   }
 }
 function drawTip(){ if(!G.tip) return; const t=G.tip; const w=Math.min(200,textW(t.text)+8); const x=Math.max(4,Math.min(W-w-4,t.x-w/2)); const lines=Math.ceil(textW(t.text)/(w-8)); rect(x,t.y,w,lines*9+5,P.ink); rect(x+1,t.y+1,w-2,lines*9+3,P.plumD); wrapText(t.text,x+4,t.y+3,w-8,P.cream); G.tip=null; }
@@ -483,9 +507,9 @@ function drawShop(){
     G.hover[i]+=((hov?1:0)-G.hover[i])*0.25; const rise=Math.round(G.hover[i]*8);
     const y=y0+slide-rise; const price=shopPrice(u); const isJ=u.kind==='joker'; const full=isJ&&G.jokers.length>=JOKER_SLOTS; const can=G.money>=price&&!full;
     rect(x+3,y+4+rise,w,h,'rgba(0,0,0,0.45)');
-    rect(x,y,w,h,can?(hov?P.cream:(isJ?P.pink:P.brass)):P.grey); rect(x+2,y+2,w-4,h-4,'#fff3d6'); cardCorners(x,y,w,h);
+    rect(x,y,w,h,can?(hov?P.cream:(isJ?RARITY_COL[u.rar]:P.brass)):P.grey); rect(x+2,y+2,w-4,h-4,'#fff3d6'); cardCorners(x,y,w,h);
     rect(x+2,y+2,w-4,isJ?20:16,can?(isJ?'#5a1a2a':P.plum):P.plumL); rect(x+2,y+(isJ?22:18),w-4,1,P.brassD);
-    if(isJ){ text(ctx,'JOKER',x+w/2,y+4,P.pink,1,'center'); wrapText(u.name,x+3,y+12,w-6,can?P.cream:P.grey,'center'); }
+    if(isJ){ text(ctx,RARITY_NAME[u.rar]+' JOKER',x+w/2,y+4,can?RARITY_COL[u.rar]:P.grey,1,'center'); wrapText(u.name,x+3,y+12,w-6,can?P.cream:P.grey,'center'); }
     else{ wrapText(u.name,x+3,y+6,w-6,can?P.cream:P.grey,'center'); for(let k=0;k<u.max;k++) rect(x+w/2-u.max*4+k*8+2,y+24,5,5,k<G.up[u.id]?P.mint:'#d8cbb0'); text(ctx,G.up[u.id]?'OWNED '+G.up[u.id]+'/'+u.max:'NEW',x+w/2,y+32,'#9a8b70',1,'center'); }
     wrapText(u.desc,x+6,y+(isJ?36:46),w-12,P.ink);
     rect(x+2,y+h-18,w-4,16,can?(hov?P.pink:P.plum):P.plumL);
