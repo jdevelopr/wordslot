@@ -2,12 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>WORDSLOT</title>
 <style>
-  html,body{margin:0;height:100%;background:#0b0812;overflow:hidden;touch-action:manipulation;}
-  body{display:flex;align-items:center;justify-content:center;}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;cursor:pointer;outline:none;}
+  html,body{margin:0;height:100%;background:#0b0812;overflow:hidden;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  body{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;cursor:pointer;outline:none;display:block;-webkit-tap-highlight-color:transparent;}
 </style>
 </head>
 <body>
@@ -68,12 +71,22 @@ function text(ctx,s,x,y,color,sc=1,align='left'){
 function textShadow(ctx,s,x,y,color,sc=1,align='left',shadow=P.ink){ text(ctx,s,x+sc,y+sc,shadow,sc,align); text(ctx,s,x,y,color,sc,align); }
 
 // ---------- Canvas / scaling ----------
-const W=480,H=270;
+let W=480; const H=270; const W_MIN=480, W_MAX=720; let portrait=false;
 const canvas=document.getElementById('c'); const ctx=canvas.getContext('2d');
 canvas.width=W; canvas.height=H; ctx.imageSmoothingEnabled=false;
 let scale=1;
-function resize(){ scale=Math.min(innerWidth/W,innerHeight/H); canvas.style.width=Math.floor(W*scale)+'px'; canvas.style.height=Math.floor(H*scale)+'px'; }
-addEventListener('resize',resize); resize();
+function viewSize(){ const v=window.visualViewport; return {w:Math.floor(v?v.width:innerWidth), h:Math.floor(v?v.height:innerHeight)}; }
+function resize(){
+  const {w:vw,h:vh}=viewSize(); portrait=vh>vw;
+  // Widen the internal canvas to match the window's aspect ratio so the game reaches the screen edges (no letterboxing on wide phones), then scale uniformly.
+  const nw=Math.max(W_MIN,Math.min(W_MAX,Math.round(H*vw/vh)));
+  if(nw!==W){ W=nw; canvas.width=W; canvas.height=H; ctx.imageSmoothingEnabled=false; }
+  scale=Math.min(vw/W,vh/H);
+  canvas.style.width=Math.floor(W*scale)+'px'; canvas.style.height=Math.floor(H*scale)+'px';
+}
+addEventListener('resize',resize); addEventListener('orientationchange',()=>setTimeout(resize,100));
+if(window.visualViewport) window.visualViewport.addEventListener('resize',resize);
+resize();
 
 // ---------- Audio (tiny synth) ----------
 let AC=null, muted=false;
@@ -541,6 +554,7 @@ function draw(){
   ctx.restore();
   if(flash>0){ ctx.globalAlpha=flash*0.6; rect(0,0,W,H,flashCol); ctx.globalAlpha=1; }
   if(muted) text(ctx,'MUTED',W-8,H-12,P.grey,1,'right');
+  if(portrait){ rect(0,0,W,H,'rgba(11,8,18,0.85)'); textShadow(ctx,'ROTATE YOUR DEVICE',W/2,H/2-14,P.brass,2,'center'); text(ctx,'WORDSLOT PLAYS IN LANDSCAPE',W/2,H/2+10,P.cream,1,'center'); }
 }
 
 // ---------- Input ----------
@@ -548,7 +562,11 @@ const mouse={x:-1,y:-1};
 function toLocal(e){ const r=canvas.getBoundingClientRect(); return {x:(e.clientX-r.left)/scale,y:(e.clientY-r.top)/scale}; }
 canvas.addEventListener('mousemove',e=>{ Object.assign(mouse,toLocal(e)); });
 canvas.addEventListener('mousedown',e=>{ Object.assign(mouse,toLocal(e)); click(); });
-canvas.addEventListener('touchstart',e=>{ Object.assign(mouse,toLocal(e.touches[0])); click(); e.preventDefault(); },{passive:false});
+canvas.addEventListener('touchstart',e=>{ Object.assign(mouse,toLocal(e.touches[0])); if(AC&&AC.state==='suspended') AC.resume(); click(); e.preventDefault(); },{passive:false});
+canvas.addEventListener('touchmove',e=>{ Object.assign(mouse,toLocal(e.touches[0])); e.preventDefault(); },{passive:false});
+canvas.addEventListener('touchend',e=>{ e.preventDefault(); },{passive:false});
+document.addEventListener('gesturestart',e=>e.preventDefault());
+document.addEventListener('dblclick',e=>e.preventDefault());
 function click(){ for(const b of buttons){ if(!b.enabled) continue; if(mouse.x>=b.x&&mouse.x<b.x+b.w&&mouse.y>=b.y&&mouse.y<b.y+b.h){ act(b.id); return; } } }
 function act(id){
   if(id==='start'||id==='restart'){ newGame(); beep(500,0.1,'square',0.08); return; }
