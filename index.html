@@ -10,7 +10,7 @@
 <style>
   html,body{margin:0;height:100%;background:#0b0812;overflow:hidden;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   body{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;cursor:pointer;outline:none;display:block;-webkit-tap-highlight-color:transparent;}
+  canvas{cursor:pointer;outline:none;display:block;-webkit-tap-highlight-color:transparent;}
 </style>
 </head>
 <body>
@@ -62,7 +62,7 @@ const glyphCache = {};
 function glyph(ch){ if(!glyphCache[ch]) glyphCache[ch]=(GL[ch]||GL['?']).split('|'); return glyphCache[ch]; }
 function textW(s,sc=1){ return s.length*6*sc-sc; }
 function text(ctx,s,x,y,color,sc=1,align='left'){
-  s=String(s).toUpperCase();
+  s=String(s).toUpperCase(); x=Math.round(x); y=Math.round(y);
   if(align==='center') x-=Math.floor(textW(s,sc)/2); else if(align==='right') x-=textW(s,sc);
   ctx.fillStyle=color;
   for(let i=0;i<s.length;i++){ const g=glyph(s[i]);
@@ -74,14 +74,19 @@ function textShadow(ctx,s,x,y,color,sc=1,align='left',shadow=P.ink){ text(ctx,s,
 let W=480; const H=270; const W_MIN=480, W_MAX=720; let portrait=false;
 const canvas=document.getElementById('c'); const ctx=canvas.getContext('2d');
 canvas.width=W; canvas.height=H; ctx.imageSmoothingEnabled=false;
-let scale=1;
+let scale=1, rscale=1;
 function viewSize(){ const v=window.visualViewport; return {w:Math.floor(v?v.width:innerWidth), h:Math.floor(v?v.height:innerHeight)}; }
 function resize(){
   const {w:vw,h:vh}=viewSize(); portrait=vh>vw;
   // Widen the internal canvas to match the window's aspect ratio so the game reaches the screen edges (no letterboxing on wide phones), then scale uniformly.
-  const nw=Math.max(W_MIN,Math.min(W_MAX,Math.round(H*vw/vh)));
-  if(nw!==W){ W=nw; canvas.width=W; canvas.height=H; ctx.imageSmoothingEnabled=false; }
+  W=Math.max(W_MIN,Math.min(W_MAX,Math.round(H*vw/vh)));
   scale=Math.min(vw/W,vh/H);
+  // Draw at an integer multiple of the art resolution, sized to physical device pixels, so pixels
+  // (and the 5x7 font) stay uniform. CSS then only shrinks it a touch (or not at all), never stretches.
+  const dpr=window.devicePixelRatio||1;
+  rscale=Math.max(1,Math.ceil(scale*dpr-0.01));
+  canvas.width=W*rscale; canvas.height=H*rscale;
+  ctx.setTransform(rscale,0,0,rscale,0,0); ctx.imageSmoothingEnabled=false;
   canvas.style.width=Math.floor(W*scale)+'px'; canvas.style.height=Math.floor(H*scale)+'px';
 }
 addEventListener('resize',resize); addEventListener('orientationchange',()=>setTimeout(resize,100));
